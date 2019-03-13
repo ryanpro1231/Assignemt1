@@ -1,7 +1,7 @@
 var express = require('express');
 var app = express();
-var exphbs = require('handlebars');
-var port = 5000;
+var exphbs = require('express-handlebars');
+var port = 3000;
 var path = require('path');
 var router = express.Router();
 var bodyParser = require('body-parser');
@@ -22,9 +22,9 @@ mongoose.connect("mongodb://localhost:27017/gameEntries", {
 require('./models/Entry');
 var Entry = mongoose.model('Entries');
 
-app.engine('handlebars', exphbs)({
+app.engine('handlebars', exphbs({
     defaultLayout:'main'
-})
+}));
 app.set('view engine', 'handlebars');
 
 // functions to use body parser 
@@ -34,28 +34,56 @@ app.use(bodyParser.json());
 //route to index.html
 router.get('/',function(req, res){
     //res.sendFile(path.join(__dirname+'/index.html'));
-    var title = "Welcome to the game app";
-    res.render('index', {
-        title:title
-    });
+    //var title = "Welcome to the game app";
+    res.render('index');
 });
 
-app.get('/getdata', function(req,res){
+app.get('/', function(req,res){
     console.log("Request made from fetch");
     Entry.find({}).then(function(entries){
-        res.send({
-            entries:entries
-        });
+        res.render('index', {entries:entries})
     });
 });
 
-//route to entries.html
+//route to entries
 router.get('/entries',function(req, res){
-    res.sendFile(path.join(__dirname+'/entries.html'));
+    res.render('gameEntries/addgame')
 });
 
-//post for form on index.html
-app.post('/', function(req,res){
+//route to Edit entries
+router.get('/gameentries/edit/:id',function(req, res){
+Entry.findOne({
+_id:req.params.id
+}).then(function(entry){
+    res.render('gameentries/editgame', {entry:entry});
+});
+
+    
+});
+
+//route to put edited entry
+router.post('/editgame/:id', function(req,res){
+    Entry.findOne({
+        _id:req.params.id
+    }).then(function(entry){
+        entry.title = req.body.title;
+        entry.genre = req.body.genre;
+
+        entry.save().then(function(idea){
+            res.redirect('/');
+        })
+    });
+});
+
+//route to login
+router.get('/login',function(req, res){
+    res.render('login')
+});
+
+
+
+//post for form on index
+app.post('/addgame', function(req,res){
     console.log(req.body);
     var newEntry = {
         title:req.body.title,
@@ -63,6 +91,13 @@ app.post('/', function(req,res){
     }
 
     new Entry(newEntry).save().then(function(entry){
+        res.redirect('/');
+    });
+});
+//Delete your entry
+app.post('/:id', function(req,res){
+    Entry.remove({_id:req.params.id}).then(function(){
+        //req.flash("game removed");
         res.redirect('/');
     });
 });
